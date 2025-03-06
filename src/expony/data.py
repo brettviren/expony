@@ -1,0 +1,219 @@
+#!/usr/bin/env python
+
+from typing import List
+import copy
+from collections import defaultdict
+import random
+from itertools import product
+
+# (row,col) order.  (0,0) is upper left corner.
+Position = tuple
+
+def adjacent(a: Position, b: Position) -> bool:
+    '''
+    Return True if a and be are adjacent.
+    '''
+    return ((a[0] == b[0] and abs(a[1] - b[1]) == 1) 
+            or
+            (a[1] == b[1] and abs(a[0] - b[0]) == 1))
+
+
+tile_count = 0
+class Tile:
+
+    value: int
+    ident: int
+    merged: None|Position = None
+
+    def __init__(self, value: int = 0):
+        self.value = value
+        global tile_count
+        tile_count += 1         # any ident == 0 is an error
+        self.ident = tile_count
+
+    def __repr__(self):
+
+        return f'{self.ident:04d}:{self.value:01d}'
+
+TileArray = List[List[Tile]]
+
+
+class Matched:
+    '''
+    Record a set of positions of matching tiles and their new value.
+    '''
+    value: int
+    origin: Position
+    matched: List[Position]
+
+    def __init__(self, value:int, origin:Position, matched:List[Position]):
+        self.value = value
+        self.origin = origin
+        self.matched = matched
+
+    def __repr__(self):
+        return f'<Matched {self.origin}={self.value} -> {self.matched}>'
+
+    @property
+    def all_positions(self):
+        return [self.origin] + self.matched
+    
+def const_tile_value(val):
+    return lambda r,c: val
+def range_tile_value(ncols):
+    return lambda r,c: r*ncols + c
+def sum_tile_value():
+    return lambda r,c: r+c
+
+class Board:
+    tiles: TileArray
+
+    # Must have at least this many values in a row or col to form a match.
+    min_match = 3
+
+    # The maximum value for newly generated tile values.
+    max_init_value = 4
+
+    # The default shape of the board.
+    default_shape = (8,8)
+
+    def __init__(self, source: int|TileArray|'Board'|None = None,
+                 value_generator = None):
+
+        if value_generator is None:
+            value_generator = lambda r,c: self.random_value()
+
+        if source is None:
+            source = self.default_shape
+        if isinstance(source, int): # square
+            source = (source, source)
+        if isinstance(source, tuple): # default or custom shape
+            if source[0] < self.min_match or source[1] < self.min_match:
+                raise ValueError(f'Board shape is too small: {source}')
+
+            self.tiles = [[Tile(value_generator(row, col))
+                           for col in range(source[1])]
+                          for row in range(source[0])]
+            return
+        if isinstance(source, Board): # copy
+            self.tiles = copy.deepcopy(source.tiles)
+            return
+        if isinstance(source, list): # premade
+            self.tiles = copy.deepcopy(source)
+            return
+        raise TypeError(f'Board can not be constructed from: {type(source)}')
+
+
+    def __repr__(self):
+        lines = []
+        for row in self.tiles:
+            lines.append(' '.join([f'{col.value:1d}' for col in row]))
+        return '\n'.join(lines)
+
+        
+    def __getitem__(self, ind: int):
+        if isinstance(ind, tuple):
+            return self.tiles[ind[0]][ind[1]]
+        raise TypeError(f'invalid index type: {type(ind)}')
+
+    def __setitem__(self, ind: int, value: Tile):
+        if not isinstance(value, Tile):
+            raise TypeError(f'Board holds Tile not {type(value)}')
+        if isinstance(ind, tuple):
+            self.tiles[ind[0]][ind[1]] = value
+            return value
+        raise TypeError(f'invalid index type: {type(ind)}')
+
+    @property
+    def shape(self):
+        return (len(self.tiles), len(self.tiles[0]))
+
+    def random_value(self):
+        return random.randint(1, self.max_init_value)
+
+    def cardinal_ranges(self, pos: Position):
+        '''
+        Return dict of ranges of positions along each cardinal direction.
+
+        The dict gives a range positions starting from pos and going in one of
+        each cardinal direction.  The directions are the dictionary keys are
+        "up", "down", "left", "right".
+        '''
+        row,col = pos
+        nrows,ncols = self.shape
+        return dict(
+            up =  ((r,col) for r in range(row-1,-1,-1)),
+            down= ((r,col) for r in range(row+1,nrows)),
+            left= ((row,c) for c in range(col-1,-1,-1)),
+            right=((row,c) for c in range(col+1,ncols))
+        )
+            
+    def matched(self, seed: Position) -> Matched:
+        '''
+        Return a matched for pos or None 
+
+        getMatchedTile
+        '''
+        target = self[seed].value
+
+        m = defaultdict(list)
+        for card, prange in self.cardinal_ranges(seed).items():
+            for pos in prange:
+                if self[pos].value != target:
+                    break;
+                m[card].append(pos)
+                
+        s = set()
+        nvert = 1 + len(m["up"]) + len(m["down"])
+        if nvert >= self.min_match:
+            s.update(m["up"])
+            s.update(m["down"])
+        nhoriz = 1 + len(m["left"]) + len(m["right"])
+        if nhoriz >= self.min_match:
+            s.update(m["left"])
+            s.update(m["right"])
+        if not s:
+            return
+        points = target + len(s) - 1
+        return Matched(points, seed, list(s))
+
+    @property
+    def all_positions(self) -> List[Position]:
+        return product(range(self.shape[0]), range(self.shape[1]))
+
+    def all_matches(self) -> List[Matched]:
+        '''
+        Return all matches in the current board.
+
+        getMatchesOnBoard
+        '''
+        ret = list()
+        for seed in self.all_positions:
+            m = self.matched(seed)
+            if m is None:
+                continue
+            ret.append(m)
+        return ret
+
+    def assure_stable(self):
+        '''
+        Randomize until there are no matches.
+        '''
+        mvmo = self.max_init_value - 1
+
+        while True:
+            ms = self.all_matches()
+            if not ms:
+                return
+            # pick a new for each match seed which is not the current value.
+            for m in ms:
+                val = self[m.origin].value
+                val += random.randint(0, mvmo-1) - 1
+                self[m.origin].value = (val % mvmo) + 1
+
+
+class GameState:
+    board: Board
+    points: int
+    moves: int
+    
