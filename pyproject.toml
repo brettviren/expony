@@ -1,8 +1,8 @@
 [project]
 name = "expony"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "A Python clone of exponentile"
+readme = {file = "README.org", content-type = "text/org"}
 authors = [
     { name = "Brett Viren", email = "brett.viren@gmail.com" }
 ]
@@ -16,5 +16,5 @@ dependencies = [
 expony = "expony:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
