@@ -155,6 +155,9 @@ def maybe_swap(board: Board, seed: Position, targ: Position) -> List[BoardPoints
     if mt:
         new_board[targ].value = mt.value
         all_matches.append(mt)
+    if not all_matches:
+        return
+
 
     merged, gravitied = move_tiles_down(new_board, all_matches)
     comboed = find_and_do_combos(gravitied)
