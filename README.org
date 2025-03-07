@@ -1,0 +1,6 @@
+#+title 🎠 expony 🎠
+
+This is a Python clone of the horribly addictive game [[https://www.bellika.dk/exponentile][exponentile]].  It has a
+PyGame UI for game play that is inferior to the original.  The intention for
+expony is to do some experimenting with alternative game board sizes, rules, UI
+feedback, metrics, strategies, etc.
