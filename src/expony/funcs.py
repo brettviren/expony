@@ -9,13 +9,14 @@ Also, the functions leave the tiles in place in their board and only change
 their values.
 '''
 
-from typing import List
+from typing import List, Generator
 from expony.data import (
     Board,
     Tile,
     Position,
     Matched,
     BoardPoints,
+    Move,
     adjacent,
 )
 
@@ -180,3 +181,24 @@ def maybe_swap(board: Board, seed: Position, targ: Position) -> List[BoardPoints
         BoardPoints(gravitied, 0),
     ] + comboed        
         
+def possible_moves(board: Board) -> Generator[Move, None, None]:
+    '''
+    Generate possible moves in board.
+    '''
+    shape = board.shape
+    for seed in board.all_positions:
+        row, col = seed
+
+        # skip first row/col
+        if row == 0 or col == 0:
+            continue
+
+        # possible swaps above or left of seed
+        for targ in [(row-1, col), (row, col-1)]:
+            bps = maybe_swap(board, seed, targ)
+            if not bps:
+                continue
+            points = sum([bp.points for bp in bps])
+            new_board = bps[-1].board
+            yield Move(seed, targ, points, new_board)
+            

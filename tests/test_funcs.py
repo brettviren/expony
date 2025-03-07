@@ -6,6 +6,7 @@ from expony.funcs import (
     apply_gravity,
     find_and_do_combos,
     maybe_swap,
+    possible_moves,
 )
 from expony.data import (
     range_tiles,
@@ -66,3 +67,22 @@ def test_move():
         print(f'{bp.points=}:\n{bp.board}')
 
 
+def test_possible_moves_go_big():
+    b = Board(8)
+    print()
+    print(b)
+    
+    nturns = 0
+    total_points = 0
+    while True:
+        nturns += 1
+        moves = list(possible_moves(b))
+        if not moves:
+            break
+        moves.sort(key=lambda m: -m.points)
+        move = moves[0]
+        b = move.board
+        total_points += move.points
+        print(f'{nturns}: {move.seed} -> {move.targ} = {move.points}/{total_points}')
+
+    print(f'finished after {nturns} turns with {total_points} points')

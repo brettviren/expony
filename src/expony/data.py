@@ -8,6 +8,7 @@ import copy
 from collections import defaultdict
 import random
 from itertools import product
+from dataclasses import dataclass
 
 # (row,col) order.  (0,0) is upper left corner.
 Position = tuple
@@ -279,13 +280,29 @@ class Board:
         self[pos].value = self.random_value()
 
 
+@dataclass
 class BoardPoints:
+    '''
+    A new board and the points accrued in producing it form some prior
+    board.
+    '''
+
     board: Board
     points: int
 
-    def __init__(self, board, points):
-        self.board = board
-        self.points = points
+
+@dataclass
+class Move:
+    '''
+    The new board and points accrued if seed and targ were to swap from some
+    prior board.
+    '''
+
+    seed: Position
+    targ: Position
+    points: int
+    board: Board
+    
 
 
 class GameState:
