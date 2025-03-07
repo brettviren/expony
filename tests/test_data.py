@@ -5,6 +5,8 @@ from expony.data import (
     Matched,
     Board,
     adjacent,
+    range_tiles,
+    same_tiles,
 )
 
     
@@ -20,13 +22,14 @@ def test_board_basics():
     b[0,0].value = 42
     assert b[0,0].value == 42
 
-    ones = Board((3,3), lambda r,c: 1)
-    assert ones.shape == (3,3)
+    shape = (3,3)
+    ones = Board(same_tiles(shape, 1))
+    assert ones.shape == shape
     assert len(list(ones.all_positions)) == 3*3
     for pos in ones.all_positions:
         assert ones[pos].value == 1
 
-    counts = Board((3,3), lambda r,c: r*3 + c)
+    counts = Board(range_tiles(shape))
     assert counts[0,0].value == 0
     assert counts[0,2].value == 2
     assert counts[1,0].value == 3
@@ -59,8 +62,8 @@ def test_board_match():
     assert m.value == 5 + 4 - 1
 
 def test_stable():
-
-    b = Board((8), lambda r,c: 1)
+    shape=(8,8)
+    b = Board(same_tiles(shape, 1))
     print(f'before:\n{b}')
     b.assure_stable()
     print(f'after:\n{b}')

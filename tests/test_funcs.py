@@ -8,12 +8,12 @@ from expony.funcs import (
     maybe_swap,
 )
 from expony.data import (
-    range_tile_value,
-    const_tile_value,
+    range_tiles,
+    same_tiles,
     Board,
 )
 def test_swap_tiles():
-    b = Board(3, range_tile_value(3))
+    b = Board(range_tiles((3,3)))
     assert b[(0,0)].value == 0
     assert b[(0,1)].value == 1
     b2 = swap_tiles(b, (0,0), (0,1))
@@ -22,7 +22,7 @@ def test_swap_tiles():
 
     
 def test_merge_matches_apply_gravity():
-    b = Board(3, const_tile_value(5))
+    b = Board(same_tiles((3,3), 5))
     b[1,1].value = 6
     b[0,1].value = 6
     b[2,1].value = 6
@@ -43,7 +43,7 @@ def test_merge_matches_apply_gravity():
     gg[(2,1)] == m.value
 
 def test_combos():
-    b = Board(3, const_tile_value(5))
+    b = Board(same_tiles((3,3), 5))
     b[1,1].value = 6
     b[0,1].value = 6
     b[2,1].value = 6

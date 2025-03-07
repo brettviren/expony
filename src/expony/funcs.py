@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+'''
+Functions to implement original exponentile game logic.
+
+These functions tend to produce new board for each step instead of mutating an
+existing board in order to allow a GUI to animate transitions.
+
+Also, the functions leave the tiles in place in their board and only change
+their values.
+'''
 
 from typing import List
 from expony.data import (
@@ -6,18 +15,21 @@ from expony.data import (
     Tile,
     Position,
     Matched,
+    BoardPoints,
     adjacent,
 )
 
 
+
 def swap_tiles(board: Board, seed: Position, targ: Position) -> Board:
     '''
-    Swap seed and target without constraint and return a new board.
+    Make a new board and swap its seed and target tile values without constraint.
     '''
     swapped = Board(board)
     swapped[seed].value = board[targ].value
     swapped[targ].value = board[seed].value
     return swapped
+
 
 def merge_matches(board: Board, matches: List[Matched]) -> Board:
     '''
@@ -28,8 +40,10 @@ def merge_matches(board: Board, matches: List[Matched]) -> Board:
     removed = Board(board)
     for m in matches:
         for pos in m.matched:
+            # set a special attribute on the tile
             removed[pos].merged = m.origin
     return removed
+
 
 def apply_gravity(board: Board, matches: List[Matched]) -> Board:
     '''
@@ -54,12 +68,16 @@ def apply_gravity(board: Board, matches: List[Matched]) -> Board:
             gravity[row+nempty_below, col].value = gravity[row, col].value
         # fill in
         for row in range(nempty_below):
-            gravity[row, col].value = gravity.random_value()
+            gravity.set_random((row, col))
     return gravity
+
 
 def move_tiles_down(board: Board, matches: List[Matched]) -> List[Board]:
     '''
-    For reasons I don't know, these are ganged.
+    Merge matches and apply gravity returning two boards.
+
+    This method is a monolith in the original exponentile but are actually
+    independent functions.
 
     moveTilesDown().
     '''
@@ -89,15 +107,6 @@ def unique_new_matches(board) -> List[Matched]:
         seen_positions.update(m.all_positions)
         result.append(m)
     return result
-
-
-class BoardPoints:
-    board: Board
-    points: int
-
-    def __init__(self, board, points):
-        self.board = board
-        self.points = points
 
 
 def find_and_do_combos(board: Board) -> List[BoardPoints]:
@@ -134,10 +143,10 @@ def find_and_do_combos(board: Board) -> List[BoardPoints]:
     return result
     
 
-
 def maybe_swap(board: Board, seed: Position, targ: Position) -> List[BoardPoints]:
     '''
-    Attempt to swap tiles, return new tuple of (board,points) if successful.
+    Attempt to swap tiles, return list of BoardPoints giving intermediate
+    and final boards and points contributions if swap is legal else return None.
     '''
     if not adjacent(seed, targ):
         return
@@ -148,6 +157,7 @@ def maybe_swap(board: Board, seed: Position, targ: Position) -> List[BoardPoints
     ms = new_board.matched(seed)
     mt = new_board.matched(targ)
         
+    # we mutate the seed tile value to reflect the points of the group.
     all_matches = list()
     if ms:
         new_board[seed].value = ms.value
@@ -157,7 +167,6 @@ def maybe_swap(board: Board, seed: Position, targ: Position) -> List[BoardPoints
         all_matches.append(mt)
     if not all_matches:
         return
-
 
     merged, gravitied = move_tiles_down(new_board, all_matches)
     comboed = find_and_do_combos(gravitied)

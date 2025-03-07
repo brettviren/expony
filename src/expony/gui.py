@@ -8,13 +8,13 @@ import expony.funcs
 pygame.init()
 
 class Game:
-    def __init__(self, shape=(8,8), tile_size=100):
+    def __init__(self, shape=(8,8), tile_size=100, random_seed = None):
         self.shape = shape
         self.height, self.width  = [s*tile_size for s in shape]
         self.tile_size = tile_size
         # Set up the display
         self.screen = pygame.display.set_mode((self.width, self.height))
-        self.eboard = expony.data.Board(shape)
+        self.eboard = expony.data.Board(shape, random_seed=random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
 
@@ -68,7 +68,7 @@ class Game:
         if self.seed_pos == pos:
             border_color = (0, 0, 0)
 
-        points = 2 ** tile.value
+        points = tile.points
 
         rect = (pix[0], pix[1], self.tile_size, self.tile_size)
         center = (rect[0] + rect[2]//2, rect[1] + rect[3]//2)
@@ -118,11 +118,12 @@ class Game:
                 print(f'up: on seed at {pos}')
                 return
 
-            print(f'up: at other pos: {self.seed_pos} -> {pos}')
-            bps = expony.funcs.maybe_swap(self.eboard, self.seed_pos, pos)
+            seed_pos = self.seed_pos
+            self.seed_pos = None
+            print(f'up: at other pos: {seed_pos} -> {pos}')
+            bps = expony.funcs.maybe_swap(self.eboard, seed_pos, pos)
             if not bps:
-                print(f'up: illegal move {self.seed_pos} -> {pos}')
-                self.seed_pos = None
+                print(f'up: illegal move {seed_pos} -> {pos}')
                 return
             for bp in bps:
                 print(f'points: {self.total_points} + {bp.points}')
