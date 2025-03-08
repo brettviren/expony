@@ -1,0 +1,55 @@
+#+title: Examining autoplay
+
+* What is autoplay
+
+The original exponentile gives a "Hint" button.  A human can implement the "autoplay" strategy by only making moves given by this hint.
+
+The autoplay hint will be the first legal move found by searching down the first
+column, then the second, etc.
+
+Note, an autoplay game is deterministic, depending only on the random seed.
+
+* Testing autoplay with expony
+
+An expony test implements the autoplay strategy, looping over a set of random seeds.
+Here is some example output for the first ten games:
+
+#+begin_example
+   0:  24260 points, max  9/ 512 in 3.5 s / 144.9 Hz after 510 plays
+   1:  21408 points, max  9/ 512 in 3.1 s / 149.0 Hz after 462 plays
+   2:  25348 points, max  9/ 512 in 3.7 s / 146.8 Hz after 550 plays
+   3:   9160 points, max  8/ 256 in 1.5 s / 142.4 Hz after 213 plays
+   4:  12524 points, max  9/ 512 in 1.9 s / 155.4 Hz after 298 plays
+   5:  40360 points, max 10/1024 in 5.8 s / 142.9 Hz after 828 plays
+   6:   9512 points, max  8/ 256 in 1.5 s / 147.2 Hz after 220 plays
+   7:  27040 points, max  9/ 512 in 3.9 s / 146.7 Hz after 575 plays
+   8:  24584 points, max  9/ 512 in 3.7 s / 142.6 Hz after 522 plays
+   9:  25312 points, max 10/1024 in 3.6 s / 143.0 Hz after 512 plays
+  10:  23632 points, max  9/ 512 in 4.0 s / 140.5 Hz after 556 plays
+#+end_example
+
+Out of 100 games, the min and max score games are:
+
+#+begin_example
+53:   6568 points, max  8/ 256 in  1.2 s / 132.1 Hz after 161 plays
+80:  79540 points, max 10/1024 in 12.0 s / 131.1 Hz after 1577 plays
+#+end_example
+
+The highest point tile was 2048 and achieved in games:
+
+#+begin_example
+13:  24976 points, max 11/2048 in 3.8 s / 132.7 Hz after 500 plays
+34:  49588 points, max 11/2048 in 7.6 s / 131.6 Hz after 1001 plays
+58:  64444 points, max 11/2048 in 9.3 s / 138.4 Hz after 1289 plays
+#+end_example
+
+* Enable autoplay in exponentile
+
+Open settings and click in order:
+
+#+begin_example
+"bottom", "top", "slow", "fast", and "instant"
+#+end_example
+
+(skipping "medium").  You should see a message showing debug mode is enabled.
+Close settings and an "Autoplay on/off" button will be displayed.
