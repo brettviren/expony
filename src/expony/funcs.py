@@ -43,6 +43,7 @@ def merge_matches(board: Board, matches: List[Matched]) -> Board:
         for pos in m.matched:
             # set a special attribute on the tile
             removed[pos].merged = m.origin
+            removed[pos].value = 0
     return removed
 
 

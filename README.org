@@ -20,3 +20,4 @@ $ uv run src/expony/gui.py
 #+begin_example
 $ uv run src/expony/gui.py
 #+end_example
+
