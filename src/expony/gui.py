@@ -4,16 +4,50 @@ import sys
 import expony.data 
 import expony.funcs 
 
-# Initialize Pygame
-pygame.init()
+CLOCK_TICK=60
 
-class Game:
-    def __init__(self, shape=(8,8), tile_size=100, random_seed = None):
-        self.shape = shape
-        self.height, self.width  = [s*tile_size for s in shape]
-        self.tile_size = tile_size
-        # Set up the display
-        self.screen = pygame.display.set_mode((self.width, self.height))
+pygame.init()
+screen = pygame.display.set_mode((0,0))
+
+
+class Frame:
+    def __init__(self, rect):
+        self.rect = rect
+    @property
+    def width(self):
+        return self.rect.width
+    @property
+    def height(self):
+        return self.rect.height
+
+    def local_to_global(self, pix):
+        if isinstance(pix, pygame.Rect):
+            pix = (pix.x, pix.y)
+        if isinstance(pix, tuple):
+            return (self.rect.x + pix[0],
+                    self.rect.y + pix[1])
+        raise TypeError(f'unknown location type: {type(pix)}')
+
+    def global_to_local(self, pix):
+        if isinstance(pix, pygame.Rect):
+            pix = (pix.x, pix.y)
+        if isinstance(pix, tuple):
+            return (pix[0] - self.rect.x,
+                    pix[1] - self.rect.y)
+        raise TypeError(f'unknown location type: {type(pix)}')
+    
+
+
+class Board:
+    def __init__(self, frame, shape=(8,8), random_seed=None):
+
+        self.frame = frame
+
+        # Note: a tile position ("pos") is in (row,col) order while a pixel
+        # location ("pix") is in (x,y) order.
+        self.tile_shape_pix = (int(frame.width/shape[1]),
+                               int(frame.height/shape[0]))
+
         self.eboard = expony.data.Board(shape, random_seed=random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
@@ -21,22 +55,26 @@ class Game:
         # holds a selected position
         self.seed_pos = None
 
-        self.delay_ms = 500
+        self.delay_ms = 0
 
     def pix2pos(self, pix):
         '''
-        Convert pix=(x_pixel,y_pixel) to pos=(row_index, col_index).
+        Convert absolute pix=(x_pixel,y_pixel) to pos=(row_index, col_index).
         '''
-        return (pix[1] // self.tile_size, pix[0] // self.tile_size)
+        pix = self.frame.global_to_local(pix)
+        return (pix[1] // self.tile_shape_pix[1],
+                pix[0] // self.tile_shape_pix[0])
 
     def pos2pix(self, pos):
         '''
-        Convert pos=(row_index, col_index) to pix=(x_pixel,y_pixel).
+        Convert pos=(row_index, col_index) to absolute pix=(x_pixel,y_pixel).
         '''
-        return (pos[1]*self.tile_size, pos[0]*self.tile_size)
+        pix = (pos[1]*self.tile_shape_pix[0],
+               pos[0]*self.tile_shape_pix[1])
+        return self.frame.local_to_global(pix)
 
     def draw(self):
-        self.screen.fill((0, 0, 0))
+        screen.fill((0, 0, 0))
         for pos in self.eboard.all_positions:
             self.draw_tile(pos)
         pygame.display.flip()
@@ -71,19 +109,20 @@ class Game:
             border_color = (0, 0, 0)
 
 
-        rect = (pix[0], pix[1], self.tile_size, self.tile_size)
+        rect = (pix[0], pix[1], self.tile_shape_pix[0], self.tile_shape_pix[1])
         center = (rect[0] + rect[2]//2, rect[1] + rect[3]//2)
 
-        pygame.draw.rect(self.screen, color, rect)
+        pygame.draw.rect(screen, color, rect)
         if tile.value:
             font = pygame.font.Font(None, 36) # fixme, make dependent on tile_size
             text = font.render(str(tile.points), True, font_color)
             text_rect = text.get_rect(center=center)
-            self.screen.blit(text, text_rect)
-        pygame.draw.rect(self.screen, border_color, rect, 10)
+            screen.blit(text, text_rect)
+        pygame.draw.rect(screen, border_color, rect, 10)
 
 
     def handle_event(self, event):
+        # print(f"handle event: {event}")
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
@@ -97,11 +136,13 @@ class Game:
             if self.seed_pos is None:
                 print(f'down: set seed tile at {pos}')
                 self.seed_pos = pos
+                self.draw()
                 return
 
             if self.seed_pos == pos:
                 print(f'down: unseed tile at {pos}')
                 self.seed_pos = None
+                self.draw()
                 return
 
             return
@@ -127,33 +168,58 @@ class Game:
             if not bps:
                 print(f'up: illegal move {seed_pos} -> {pos}')
                 return
+
+            self.draw()
             for bp in bps:
                 print(f'points: {self.total_points} + {bp.points}')
                 self.total_points += bp.points
                 self.eboard = bp.board
+
+                if self.delay_ms:
+                    pygame.time.delay(self.delay_ms)
+
                 self.draw()
 
-                pygame.time.delay(self.delay_ms)
-
-                self.clock.tick(60)
             self.seed_pos = None
 
-            # if expony.data.adjacent(pos, self.seed_pos):
-            #     print(f'adjacent: {pos} and {self.seed_pos}')
-            #     self.eboard = expony.funcs.swap_tiles(self.eboard, self.seed_pos, pos)
-            #     self.seed_pos = None
-            #     return
-            # print(f'up: not adjacent')
             return
+
+class Gui:
+    def __init__(self, widgets):
+        self.widgets = widgets
 
     def run(self):
         self.clock = pygame.time.Clock()
         while True:
             event = pygame.event.wait()
-            self.handle_event(event)
-            self.draw()
-            self.clock.tick(60)
+            if event.type == pygame.MOUSEMOTION:
+                continue
+            if event.type == pygame.QUIT:
+                return
+            print(f'{event}')
+            if event.type in [pygame.WINDOWSHOWN,
+                              pygame.WINDOWRESIZED,
+                              pygame.WINDOWEXPOSED,
+                              ]:
+                for wid in self.widgets:
+                    wid.draw()
+                continue
+
+            if event.type in [pygame.MOUSEBUTTONUP,
+                              pygame.MOUSEBUTTONDOWN]:
+                for wid in self.widgets:
+                    if wid.frame.rect.collidepoint(*event.pos):
+                        wid.handle_event(event)
+                        break
+
+
+
 
 if __name__ == "__main__":
-    game = Game()
-    game.run()
+    screen_size = (600,600)
+    print(screen)
+    screen = pygame.display.set_mode(screen_size)
+    board = Board(Frame(pygame.Rect(0,0,*screen_size)), (6,6))
+    gui = Gui([board])
+    gui.run()
+
