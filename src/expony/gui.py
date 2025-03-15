@@ -70,7 +70,7 @@ class Board:
         self.delay_ms = 100
 
         self.find_possible_moves()
-        print(f'Board constructed with seed {random_seed}')
+        print(f'Board constructed with seed {self.random_seed}')
 
 
         
@@ -282,10 +282,22 @@ class Gui:
 
 
 if __name__ == "__main__":
-    screen_size = (600,600)
+    import sys
+
+    tsize = 8
+    bsize = 600
+
+    nums = list(map(int, sys.argv[1:]))
+    if len(nums) > 0:
+        tsize = nums[0]
+    if len(nums) > 1:
+        bsize = nums[1]
+
+    shape = (tsize, tsize)
+    screen_size = (bsize, bsize)
     print(screen)
     screen = pygame.display.set_mode(screen_size)
-    board = Board(Frame(pygame.Rect(0,0,*screen_size)), (3,3))
+    board = Board(Frame(pygame.Rect(0,0,*screen_size)), shape)
     gui = Gui([board])
     gui.run()
 
