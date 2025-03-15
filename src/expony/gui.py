@@ -60,11 +60,7 @@ class Board:
     def reset(self):
         print("RESET")
 
-        # debug, when something goes weird, we want to reproduce it. 
-        if self.random_seed is None:
-            random_seed = random.randint(0, 2**8)
-
-        self.eboard = expony.data.Board(self.shape, random_seed=random_seed)
+        self.eboard = expony.data.Board(self.shape, random_seed=self.random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
         self.nturns = 0
