@@ -46,10 +46,6 @@ import random
 
 class Board:
     def __init__(self, frame, shape=(8,8), random_seed=None):
-        # debug, when something goes weird, we want to reproduce it. 
-        if random_seed is None:
-            random_seed = random.randint(0, 2**8)
-
         self.frame = frame
 
         # Note: a tile position ("pos") is in (row,col) order while a pixel
@@ -57,7 +53,18 @@ class Board:
         self.tile_shape_pix = (int(frame.width/shape[1]),
                                int(frame.height/shape[0]))
 
-        self.eboard = expony.data.Board(shape, random_seed=random_seed)
+        self.shape = shape
+        self.random_seed = random_seed
+        self.reset()
+
+    def reset(self):
+        print("RESET")
+
+        # debug, when something goes weird, we want to reproduce it. 
+        if self.random_seed is None:
+            random_seed = random.randint(0, 2**8)
+
+        self.eboard = expony.data.Board(self.shape, random_seed=random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
         self.nturns = 0
@@ -68,6 +75,9 @@ class Board:
 
         self.find_possible_moves()
         print(f'Board constructed with seed {random_seed}')
+
+
+        
 
     def find_possible_moves(self):
         self.possible_moves = list(expony.funcs.possible_moves(self.eboard))
@@ -232,7 +242,7 @@ class Board:
             self.draw_end()
 
 
-from pygame.locals import K_q
+from pygame.locals import K_q, K_r
 class Gui:
     def __init__(self, widgets):
         self.widgets = widgets
@@ -241,6 +251,13 @@ class Gui:
         self.clock = pygame.time.Clock()
         while True:
             event = pygame.event.wait()
+            if pygame.key.get_pressed()[K_r]:
+                for wid in self.widgets:
+                    if hasattr(wid, "reset"):
+                        wid.reset()
+                        wid.draw()
+                continue
+
             if pygame.key.get_pressed()[K_q]:
                 return
             if event.type == pygame.MOUSEMOTION:
