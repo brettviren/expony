@@ -190,12 +190,10 @@ def possible_moves(board: Board) -> Generator[Move, None, None]:
     for seed in board.all_positions:
         row, col = seed
 
-        # skip first row/col
-        if row == 0 or col == 0:
-            continue
-
         # possible swaps above or left of seed
         for targ in [(row-1, col), (row, col-1)]:
+            if targ[0] < 0 or targ[1] < 0:
+                continue
             bps = maybe_swap(board, seed, targ)
             if not bps:
                 continue

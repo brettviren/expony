@@ -251,6 +251,16 @@ class Board:
             ret.append(m)
         return ret
 
+    def at_least_one(self) -> bool:
+        '''
+        Return true if there is at least one move possible.
+        '''
+        for seed in self.all_positions:
+            m = self.matched(seed)
+            if m: return True
+        return False
+        
+
     def assure_stable(self):
         '''
         Randomize until there are no matches.

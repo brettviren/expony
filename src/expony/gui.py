@@ -7,7 +7,7 @@ import expony.funcs
 CLOCK_TICK=60
 
 pygame.init()
-screen = pygame.display.set_mode((0,0))
+screen = None
 
 
 class Frame:
@@ -19,6 +19,11 @@ class Frame:
     @property
     def height(self):
         return self.rect.height
+
+    @property
+    def center(self):
+        return (self.rect.x + self.rect.width//2,
+                self.rect.y + self.rect.height//2)
 
     def local_to_global(self, pix):
         if isinstance(pix, pygame.Rect):
@@ -37,9 +42,13 @@ class Frame:
         raise TypeError(f'unknown location type: {type(pix)}')
     
 
+import random
 
 class Board:
     def __init__(self, frame, shape=(8,8), random_seed=None):
+        # debug, when something goes weird, we want to reproduce it. 
+        if random_seed is None:
+            random_seed = random.randint(0, 2**8)
 
         self.frame = frame
 
@@ -51,11 +60,25 @@ class Board:
         self.eboard = expony.data.Board(shape, random_seed=random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
-
+        self.nturns = 0
         # holds a selected position
         self.seed_pos = None
 
-        self.delay_ms = 0
+        self.delay_ms = 100
+
+        self.find_possible_moves()
+        print(f'Board constructed with seed {random_seed}')
+
+    def find_possible_moves(self):
+        self.possible_moves = list(expony.funcs.possible_moves(self.eboard))
+        print(f'{len(self.possible_moves)} moves possible')
+        for m in self.possible_moves:
+            print(m)
+        return len(self.possible_moves)
+
+    @property
+    def game_over(self):
+        return len(self.possible_moves) == 0
 
     def pix2pos(self, pix):
         '''
@@ -73,11 +96,20 @@ class Board:
                pos[0]*self.tile_shape_pix[1])
         return self.frame.local_to_global(pix)
 
-    def draw(self):
+    def draw_board(self):
         screen.fill((0, 0, 0))
         for pos in self.eboard.all_positions:
             self.draw_tile(pos)
         pygame.display.flip()
+
+    def draw_end(self):
+        font = pygame.font.Font(None, 2*36)
+        msg = f'{self.total_points} points / {self.nturns} moves'
+        text = font.render(msg, True, (0,255,0))
+        text_rect = text.get_rect(center=self.frame.center)
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+
 
     def draw_tile(self, pos):
         pix = self.pos2pix(pos)
@@ -102,12 +134,13 @@ class Board:
         color = tile_colors[tile.value]
         font_color = (255, 255, 255)
         if tile.value in (2, 8, 9, 10, 11, 12, 13):
-            font_color = (0, 0, 0)
+            font_color = (0, 0, 0) # black
         
         border_color = (255, 255, 255)  # default tile color
         if self.seed_pos == pos:
             border_color = (0, 0, 0)
-
+        if self.game_over:
+            border_color = (255, 0, 0)
 
         rect = (pix[0], pix[1], self.tile_shape_pix[0], self.tile_shape_pix[1])
         center = (rect[0] + rect[2]//2, rect[1] + rect[3]//2)
@@ -119,6 +152,10 @@ class Board:
             text_rect = text.get_rect(center=center)
             screen.blit(text, text_rect)
         pygame.draw.rect(screen, border_color, rect, 10)
+
+    def draw(self):
+        self.draw_board()
+        self.maybe_draw_end()
 
 
     def handle_event(self, event):
@@ -136,13 +173,13 @@ class Board:
             if self.seed_pos is None:
                 print(f'down: set seed tile at {pos}')
                 self.seed_pos = pos
-                self.draw()
+                self.draw_board()
                 return
 
             if self.seed_pos == pos:
                 print(f'down: unseed tile at {pos}')
                 self.seed_pos = None
-                self.draw()
+                self.draw_board()
                 return
 
             return
@@ -168,8 +205,9 @@ class Board:
             if not bps:
                 print(f'up: illegal move {seed_pos} -> {pos}')
                 return
+            self.nturns += 1
 
-            self.draw()
+            self.draw_board()
             for bp in bps:
                 print(f'points: {self.total_points} + {bp.points}')
                 self.total_points += bp.points
@@ -178,12 +216,23 @@ class Board:
                 if self.delay_ms:
                     pygame.time.delay(self.delay_ms)
 
-                self.draw()
+                self.draw_board()
 
             self.seed_pos = None
+            print('New board state after move')
+            self.find_possible_moves()
 
+            self.draw_board()
+            self.maybe_draw_end()
             return
 
+    def maybe_draw_end(self):
+        if self.game_over:
+            self.draw_board()
+            self.draw_end()
+
+
+from pygame.locals import K_q
 class Gui:
     def __init__(self, widgets):
         self.widgets = widgets
@@ -192,21 +241,25 @@ class Gui:
         self.clock = pygame.time.Clock()
         while True:
             event = pygame.event.wait()
+            if pygame.key.get_pressed()[K_q]:
+                return
             if event.type == pygame.MOUSEMOTION:
                 continue
             if event.type == pygame.QUIT:
                 return
-            print(f'{event}')
-            if event.type in [pygame.WINDOWSHOWN,
-                              pygame.WINDOWRESIZED,
-                              pygame.WINDOWEXPOSED,
+            if event.type in [
+                    pygame.WINDOWSHOWN,
+                    pygame.WINDOWRESIZED,
+                    pygame.WINDOWEXPOSED,
                               ]:
+                print(f'{event}')
                 for wid in self.widgets:
                     wid.draw()
                 continue
 
             if event.type in [pygame.MOUSEBUTTONUP,
                               pygame.MOUSEBUTTONDOWN]:
+                print(f'{event}')
                 for wid in self.widgets:
                     if wid.frame.rect.collidepoint(*event.pos):
                         wid.handle_event(event)
@@ -219,7 +272,7 @@ if __name__ == "__main__":
     screen_size = (600,600)
     print(screen)
     screen = pygame.display.set_mode(screen_size)
-    board = Board(Frame(pygame.Rect(0,0,*screen_size)), (6,6))
+    board = Board(Frame(pygame.Rect(0,0,*screen_size)), (3,3))
     gui = Gui([board])
     gui.run()
 
