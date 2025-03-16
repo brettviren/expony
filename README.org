@@ -11,13 +11,39 @@ This package is still rather primitive
 
 ** GUI
 
+*** Interactive play
+
+To interactively play the game:
 #+begin_example
 $ uv run src/expony/gui.py
 #+end_example
+
+You can hit ~q~ to quit, ~r~ to reset.
+
+*** Passive autoplay
+
+#+begin_example
+$ uv run src/expony/autogui.py
+#+end_example
+
+For now, the autogui ignores user input until game end.
 
 ** Tests
 
 #+begin_example
-$ uv run src/expony/gui.py
+$ uv run pytest
 #+end_example
 
+You may need ~--with pytest --with torch~.
+Some tests are long running as they autoplay 100 games.
+
+* Roadmap
+
+Some considered features:
+
+- [ ] History (score, initial state, list of moves, date, duration)
+- [ ] Undo, redo, browse moves.
+- [ ] Autoplay (tests do this already, but include GUI to view progress).
+- [ ] Button to provide single hint.
+- [ ] See and choose from all possible next moves.
+- [ ] Exhaustive autoplay (DFS/BFS search of best game).

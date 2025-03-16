@@ -68,6 +68,12 @@ class Board:
 
         raise TypeError(f'Board can not be constructed from: {type(source)}')
         
+    def __getitem__(self, pos):
+        if isinstance(pos, tuple):
+            return self.tiles[pos]
+        raise TypeError(f'invalid index type: {type(pos)}')
+        
+
     def cardinal_ranges(self, pos: Position):
         '''
         Return dict of ranges of positions along each cardinal direction.

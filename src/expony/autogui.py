@@ -1,48 +1,14 @@
 import pygame
 import sys
-
-import expony.data 
 import expony.funcs 
+from expony.gui import Frame
+from expony.arr import Board as ArrayBoard
 
 CLOCK_TICK=60
 
 pygame.init()
 screen = None
 
-
-class Frame:
-    def __init__(self, rect):
-        self.rect = rect
-    @property
-    def width(self):
-        return self.rect.width
-    @property
-    def height(self):
-        return self.rect.height
-
-    @property
-    def center(self):
-        return (self.rect.x + self.rect.width//2,
-                self.rect.y + self.rect.height//2)
-
-    def local_to_global(self, pix):
-        if isinstance(pix, pygame.Rect):
-            pix = (pix.x, pix.y)
-        if isinstance(pix, tuple):
-            return (self.rect.x + pix[0],
-                    self.rect.y + pix[1])
-        raise TypeError(f'unknown location type: {type(pix)}')
-
-    def global_to_local(self, pix):
-        if isinstance(pix, pygame.Rect):
-            pix = (pix.x, pix.y)
-        if isinstance(pix, tuple):
-            return (pix[0] - self.rect.x,
-                    pix[1] - self.rect.y)
-        raise TypeError(f'unknown location type: {type(pix)}')
-    
-
-import random
 
 class Board:
     def __init__(self, frame, shape=(8,8), random_seed=None):
@@ -55,22 +21,20 @@ class Board:
 
         self.shape = shape
         self.random_seed = random_seed
-        self.delay_ms = 100
+        self.delay_ms = 0
 
         self.reset()
 
     def reset(self):
-        print("RESET")
 
-        self.eboard = expony.data.Board(self.shape, random_seed=self.random_seed)
+        self.game_over = False
+        self.eboard = ArrayBoard(self.shape, random_seed=self.random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
         self.nturns = 0
         # holds a selected position
         self.seed_pos = None
 
-        self.find_possible_moves()
-        print(f'Board constructed with seed {self.random_seed}')
 
     def faster(self):
         self.delay_ms = int(self.delay_ms*0.9)
@@ -81,16 +45,6 @@ class Board:
         self.delay_ms = int(self.delay_ms*1.1)
         print(f'delay {self.delay_ms} ms')        
 
-    def find_possible_moves(self):
-        self.possible_moves = list(expony.funcs.possible_moves(self.eboard))
-        print(f'{len(self.possible_moves)} moves possible')
-        for m in self.possible_moves:
-            print(m)
-        return len(self.possible_moves)
-
-    @property
-    def game_over(self):
-        return len(self.possible_moves) == 0
 
     def pix2pos(self, pix):
         '''
@@ -117,6 +71,7 @@ class Board:
     def draw_end(self):
         font = pygame.font.Font(None, 2*36)
         msg = f'{self.total_points} points / {self.nturns} moves'
+        print(f'{msg}, seed: {self.eboard.random_seed}')
         text = font.render(msg, True, (0,255,0))
         text_rect = text.get_rect(center=self.frame.center)
         screen.blit(text, text_rect)
@@ -125,7 +80,7 @@ class Board:
 
     def draw_tile(self, pos):
         pix = self.pos2pix(pos)
-        tile = self.eboard[pos]
+        value = self.eboard[pos]
 
         tile_colors = [
             '#000000', # black               0 
@@ -143,9 +98,9 @@ class Board:
             '#99FF80', # Light green        12/4096
             '#80FFB3', #                    13/8096
         ]
-        color = tile_colors[tile.value]
+        color = tile_colors[value]
         font_color = (255, 255, 255)
-        if tile.value in (2, 8, 9, 10, 11, 12, 13):
+        if value in (2, 8, 9, 10, 11, 12, 13):
             font_color = (0, 0, 0) # black
         
         border_color = (255, 255, 255)  # default tile color
@@ -157,18 +112,24 @@ class Board:
         rect = (pix[0], pix[1], self.tile_shape_pix[0], self.tile_shape_pix[1])
         center = (rect[0] + rect[2]//2, rect[1] + rect[3]//2)
 
+        points = 2**value 
+
         pygame.draw.rect(screen, color, rect)
-        if tile.value:
+        if value:
             font = pygame.font.Font(None, 36) # fixme, make dependent on tile_size
-            text = font.render(str(tile.points), True, font_color)
+            text = font.render(str(points), True, font_color)
             text_rect = text.get_rect(center=center)
             screen.blit(text, text_rect)
         pygame.draw.rect(screen, border_color, rect, 10)
 
-    def draw(self):
-        self.draw_board()
-        self.maybe_draw_end()
 
+    def do_move(self, seed, targ):
+        points = self.eboard.maybe_swap(seed, targ)
+        if points == 0:
+            return 0
+        self.nturns += 1
+        self.total_points += points
+        self.draw_board()
 
     def handle_event(self, event):
         # print(f"handle event: {event}")
@@ -232,25 +193,27 @@ class Board:
 
             self.seed_pos = None
             print('New board state after move')
-            self.find_possible_moves()
 
             self.draw_board()
-            self.maybe_draw_end()
             return
 
-    def maybe_draw_end(self):
-        if self.game_over:
-            self.draw_board()
-            self.draw_end()
-
-
 from pygame.locals import K_q, K_r, K_f, K_s
-class Gui:
+
+class AutoGui:
     def __init__(self, board):
         self.board = board
-
     def run(self):
         self.clock = pygame.time.Clock()
+        while True:
+            move = self.board.eboard.automove_hint()
+            if not move:
+                self.board.game_over = True
+                self.board.draw_board()
+                self.board.draw_end()
+                break
+            self.board.do_move(*move)
+            pygame.event.pump()
+
         while True:
             event = pygame.event.wait()
 
@@ -262,55 +225,19 @@ class Gui:
 
                 if event.key == K_r:
                     self.board.reset()
-                    self.board.draw()
-                    continue
-
-                if event.key == K_f:
-                    self.board.faster()
-                    continue
-
-                if event.key == K_s:
-                    self.board.slower()
-                    continue
-
-            if event.type == pygame.MOUSEMOTION:
-                continue
-            if event.type == pygame.QUIT:
-                return
-            if event.type in [
-                    pygame.WINDOWSHOWN,
-                    pygame.WINDOWRESIZED,
-                    pygame.WINDOWEXPOSED,
-                              ]:
-                # print(f'{event}')
-                self.board.draw()
-                continue
-
-            if event.type in [pygame.MOUSEBUTTONUP,
-                              pygame.MOUSEBUTTONDOWN]:
-                print(f'{event}')
-                if self.board.frame.rect.collidepoint(*event.pos):
-                    self.board.handle_event(event)
+                    self.board.draw_board()
+                    return self.run()
 
 
-
-if __name__ == "__main__":
-    import sys
-
+if '__main__' == __name__:
     tsize = 8
-    bsize = 600
-
-    nums = list(map(int, sys.argv[1:]))
-    if len(nums) > 0:
-        tsize = nums[0]
-    if len(nums) > 1:
-        bsize = nums[1]
+    bsize = 800
 
     shape = (tsize, tsize)
     screen_size = (bsize, bsize)
-    print(screen)
-    screen = pygame.display.set_mode(screen_size)
-    board = Board(Frame(pygame.Rect(0,0,*screen_size)), shape)
-    gui = Gui(board)
-    gui.run()
 
+    screen = pygame.display.set_mode(screen_size)
+
+    board = Board(Frame(pygame.Rect(0,0,*screen_size)), shape)
+    gui = AutoGui(board)
+    gui.run()
