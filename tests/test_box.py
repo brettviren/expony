@@ -100,3 +100,15 @@ def test_swap_stepped():
         print(bi._tiles)
     print(got)
     
+def test_board():
+    fresh = make_fresh(12345)
+    b = box.Board(box.make(fresh, 8), 100)
+    assert b.frame[0] == (0,0)
+    assert b.frame[1] == (800,800)
+    assert numpy.all(b.position((50,50)) == (0,0))
+    assert numpy.all(b.pixel((1,1)) == (150,150))
+
+    b.set_frame((10,20), (80,80))
+    assert b.frame[0] == (10,20)
+    assert b.frame[1] == (80,80)
+

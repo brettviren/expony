@@ -17,6 +17,14 @@ from math import floor
 Matched = namedtuple("Matched", "origin others value")
 
 class Tiling(ABC):
+    '''
+    A Tiling provides all methods to interact with the tiled state.
+
+    It abstracts the "position" of a tile to be an opaque object for use by the
+    implementation only.  See board.Board() for an ABC mapping this abstract
+    position to pixels.
+    '''
+
 
     @abstractmethod
     def clone(self):

@@ -3,9 +3,10 @@ from expony.tiling import (
     Matched,
     Tiling as BaseTiling
 )
+from expony.board import Board as BaseBoard
+
 import numpy
 value_dtype = numpy.uint8
-
 
 
 class Tiling(BaseTiling):
@@ -179,4 +180,60 @@ def make(fresh, size=8):
     assure_stable(t, fresh)
     return t
 
+
+class Board(BaseBoard):
+
+    def __init__(self, tiling, size=100):
+        '''
+        Create a box.Board
+
+        The optional size is either an int giving a square size or a tuple
+        giving rectangular shape in pixels to set initial frame size.
+        '''
+        self._tiling = tiling
+        if isinstance(size, int):
+            size = (size, size)
+        self._tile_extent = numpy.array(size)
+        extent = self._tile_extent*tiling._tiles.shape
+        self.set_frame((0,0), extent.tolist())
+
+    @property
+    def tiling(self):
+        return self._tiling
+
+    def set_frame(self, offset, extent):
+        self._frame_offset = numpy.array(offset)
+        self._frame_extent = numpy.array(extent)
+        textent = self._frame_extent / numpy.array(self.tiling._tiles.shape)
+        self._tile_extent = numpy.floor(textent).astype(int)
+
+    @property
+    def frame(self):
+        return (tuple(self._frame_offset.tolist()),
+                tuple(self._frame_extent.tolist()))
+
+    def position(self, pix):
+        '''
+        Return an opaque board position containing the pixel (xpix,ypix).
+        '''
+        rel = numpy.array(pix) - numpy.array(self._frame_offset)
+        pos = rel // self._tile_extent
+        self._check_pos(pos)
+        return pos
+
+    def pixel(self, pos):
+        '''
+        Return (x,y) pixel representing position
+        '''
+        pos = numpy.array(pos)
+        self._check_pos(pos)
+        pix = (pos + 0.5) * self._tile_extent + self._frame_offset
+        pix = numpy.floor(pix).astype(int)
+        return tuple(pix.tolist())
+    
+    def _check_pos(self, pos):
+        if numpy.any( pos < 0 ):
+            raise ValueError(f'illegal position: {pos}')
+        if numpy.any( pos >= self._tile_extent ):
+            raise ValueError(f'illegal position: {pos}')
 
