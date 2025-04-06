@@ -4,35 +4,60 @@ from expony import box
 from expony.tiling import (
     assure_stable,
     fresh_values,
-    uniform_randoms,
     all_seeded_matches,
     can_swap,
     existing_matches,
     apply_matches,
     apply_swap_inplace,
     apply_swap_stepped,
+    apply_existing_inplace,
 )
 import numpy
+import random
 
 
-def make_fresh(seed=0):
-    rng = numpy.random.default_rng(seed)
-    fresh = fresh_values(uniform_randoms(rng))
-    return fresh
+def make_fresh(seed=12345):
+    rng = random.Random(seed)
+    return fresh_values(rng)
     
 
+def test_score():
+    fresh = make_fresh()
+    dat = numpy.array([[1,1,1],
+                       [3,4,5],
+                       [6,7,8]])
+    b = box.Tiling(dat)
+    matches = existing_matches(b)
+    assert len(matches) == 1
+    print(matches)
+    match = matches[0]
+    assert match.origin == (0,0)
+    assert match.others[0] == (0,1)
+    assert match.others[1] == (0,2)    
+    assert match.value == 2
+
+    points = apply_existing_inplace(b, fresh)
+    assert points == 4
+    print (b._tiles)
+    assert numpy.all(b._tiles == numpy.array([[2, 4, 1],
+                                              [3, 4, 5],
+                                              [6, 7, 8]]))
+
+
+
 def test_make_box():
-    fresh = make_fresh(12345)
+    fresh = make_fresh()
     b = box.make(fresh, 8)
     print(f'\n{b._tiles}')
-    bwant = numpy.array([[1, 1, 3, 3, 2, 1, 2, 1],
-                         [3, 3, 1, 3, 3, 1, 2, 3],
-                         [3, 1, 3, 1, 1, 2, 1, 2],
-                         [1, 3, 1, 3, 1, 2, 3, 2],
-                         [3, 3, 2, 1, 2, 3, 2, 1],
-                         [2, 2, 1, 3, 1, 2, 1, 2],
-                         [1, 2, 1, 1, 2, 1, 1, 2],
-                         [1, 1, 2, 2, 1, 1, 3, 1]])
+    bwant = numpy.array([[4, 1, 3, 3, 2, 3, 4, 2],
+                         [3, 1, 4, 3, 2, 2, 3, 1],
+                         [4, 2, 1, 4, 1, 2, 3, 3],
+                         [1, 4, 3, 1, 4, 1, 1, 2],
+                         [2, 3, 1, 4, 1, 2, 4, 2],
+                         [3, 1, 2, 1, 4, 2, 2, 3],
+                         [4, 2, 1, 2, 3, 1, 2, 2],
+                         [3, 3, 2, 4, 3, 1, 4, 2]])
+
     assert numpy.all(b._tiles == bwant)
     b2 = box.Tiling(bwant)
     assert numpy.all(b._tiles == b2._tiles)
@@ -41,12 +66,17 @@ def test_make_box():
     with pytest.raises(StopIteration):
         next(asm)
 
-    assert not can_swap(b, (0,0), (0,1))
-    assert     can_swap(b, (0,2), (1,2))
+    assert     can_swap(b, (0,4), (0,5))
+    assert not can_swap(b, (1,0), (1,1))
 
-    got = apply_swap(b, (0,2), (1,2), fresh)
+    points = apply_swap_inplace(b, (0,2), (1,2), fresh)
+    assert points == 0
+    points = apply_swap_inplace(b, (0,4), (0,5), fresh)
+    print(points)
+    assert points == 40
+
     print(b._tiles)
-    assert got == 68
+
 
 def test_existing_matches():
     bdata = numpy.array([[1, 1, 1, 3, 2, 1, 2, 1],
@@ -71,7 +101,6 @@ def test_existing_matches():
     assert len(matches[1].others) == 2
     assert matches[1].value == 2
 
-    fresh = make_fresh(12345)
     points, doomed = apply_matches(b, matches)
     assert(points == 68)
     # print(b._tiles)
@@ -82,7 +111,7 @@ def test_existing_matches():
 
 
 def test_swap_inplace():
-    fresh = make_fresh(12345)
+    fresh = make_fresh()
     b = box.make(fresh, 8)
     print()
     print(b._tiles)
@@ -91,7 +120,7 @@ def test_swap_inplace():
     print(got)
     
 def test_swap_stepped():
-    fresh = make_fresh(12345)
+    fresh = make_fresh()
     b = box.make(fresh, 8)
     print()
     print(b._tiles)
@@ -101,7 +130,7 @@ def test_swap_stepped():
     print(got)
     
 def test_board():
-    fresh = make_fresh(12345)
+    fresh = make_fresh()
     b = box.Board(box.make(fresh, 8), 100)
     assert b.frame[0] == (0,0)
     assert b.frame[1] == (800,800)

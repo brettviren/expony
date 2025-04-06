@@ -13,6 +13,7 @@ from abc import abstractmethod, ABC
 from contextlib import contextmanager
 from collections import namedtuple
 from math import floor
+import random
 
 Matched = namedtuple("Matched", "origin others value")
 
@@ -151,25 +152,19 @@ def assure_stable(tiling, fresh):
         if not nmatched:
             return
 
-
-def uniform_randoms(rng):
-    '''
-    Yield uniform randoms in [0,1].
-    '''
-    while True:
-        yield rng.uniform()
-
-
-def fresh_values(urands, vmin=1, vmax=4):
+def fresh_values(rng=None, vmin=1, vmax=4):
     '''
     Yield integer values in [vmin,vmax], inclusive given generator of
     uniform random numbers in [0.0,1.0].
     '''
-    dv = vmax-vmin
-    for urand in urands:
-        yield int(floor(vmin + dv*urand))
+    if rng is None:
+        rng = random.Random()
 
+    values = list(range(vmin, vmax+1))
+    while True:
+        yield rng.choice(values)
 
+        
 @contextmanager
 def swapped(tiling, seed, targ):
     '''
@@ -231,10 +226,16 @@ def apply_swap_stepped(tiling, seed, targ, fresh, inplace=True):
 
         
 def apply_matches(tiling, matches):
+    '''
+    Apply the matches to the tiling.
+
+    This sets the match origin position to the match value and nulls the others.
+
+    The pair (points,nulled) are returned.  
+    '''
 
     doomed = set()
     points = 0
-
     for m in matches:
         tiling[m.origin] = m.value
         points += 2**m.value
