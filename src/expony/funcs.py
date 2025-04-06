@@ -201,3 +201,5 @@ def possible_moves(board: Board) -> Generator[Move, None, None]:
             new_board = bps[-1].board
             yield Move(seed, targ, points, new_board)
             
+def max_value(board: Board):
+    return max([board[pos].value for pos in board.all_positions])

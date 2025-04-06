@@ -141,6 +141,7 @@ class Board:
         if isinstance(source, Board): # copy
             self.tiles = copy.deepcopy(source.tiles)
             self.rng = random.Random(self.digest())
+            self.max_init_value = source.max_init_value
             return
 
         if isinstance(source, list): # premade
@@ -172,6 +173,11 @@ class Board:
     @property
     def shape(self):
         return (len(self.tiles), len(self.tiles[0]))
+
+    def set_miv(self, miv):
+        if miv > 4:
+            self.max_init_value = miv
+            print(f'set {miv=} {self.max_init_value=}')
 
     def cardinal_ranges(self, pos: Position):
         '''
@@ -281,7 +287,9 @@ class Board:
         '''
         Return a random integer value in the allowed init range.
         '''
-        return self.rng.randint(1, self.max_init_value)
+        r = self.rng.randint(1, self.max_init_value)
+        print(f'r: {r} {self.max_init_value}')
+        return r
 
     def set_random(self, pos):
         '''

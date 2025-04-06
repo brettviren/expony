@@ -55,14 +55,15 @@ class Board:
 
         self.shape = shape
         self.random_seed = random_seed
-        self.delay_ms = 100
+        self.delay_ms = 10
 
         self.reset()
 
     def reset(self):
         print("RESET")
 
-        self.eboard = expony.data.Board(self.shape, random_seed=self.random_seed)
+        self.eboard = expony.data.Board(self.shape,
+                                        random_seed=self.random_seed)
         self.eboard.assure_stable()
         self.total_points = 0
         self.nturns = 0
@@ -86,6 +87,8 @@ class Board:
         print(f'{len(self.possible_moves)} moves possible')
         for m in self.possible_moves:
             print(m)
+        # trial variant.  Conclusion, too chaotic!
+        # self.eboard.set_miv(expony.funcs.max_value(self.eboard))
         return len(self.possible_moves)
 
     @property
@@ -298,7 +301,7 @@ if __name__ == "__main__":
     import sys
 
     tsize = 8
-    bsize = 600
+    bsize = 1600
 
     nums = list(map(int, sys.argv[1:]))
     if len(nums) > 0:

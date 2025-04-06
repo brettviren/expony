@@ -41,6 +41,7 @@ Some tests are long running as they autoplay 100 games.
 
 Some considered features:
 
+- [ ] Click cli.
 - [ ] History (score, initial state, list of moves, date, duration)
 - [ ] Undo, redo, browse moves.
 - [ ] Autoplay (tests do this already, but include GUI to view progress).
